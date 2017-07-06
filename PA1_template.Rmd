@@ -1,0 +1,103 @@
+---
+title: "Reproducible Research Project 1"
+author: "Ricky Uch"
+date: "July 6, 2017"
+output: html_document
+---
+This document presents the results of the Reproducible Research project in Coursera.  The assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prepare the Environment and Load Activity Data
+```{r}
+library(lattice)
+setwd("C:/Users/ruch/Documents/Coursera/Course_5")
+activity <- read.table("activity.csv", sep = ",", header = TRUE)
+```
+
+## Clean the Data by filtering out the missing step data
+```{r}
+clean_activity <- subset(activity, !is.na(steps))
+```
+
+## Find the total number of steps taken per day and plot in histogram
+```{r}
+clean_activity_agg <- aggregate(steps ~ date, clean_activity, sum)
+hist(clean_activity_agg$steps, main = "Histogram of Steps by Day", xlab = "Steps")
+```
+
+### Calculate the mean of total steps per day
+```{r}
+clean_activity_mean <- mean(clean_activity_agg$steps)
+
+clean_activity_mean
+```
+
+### Calculate the median of total steps per day
+```{r}
+clean_activity_median <- median(clean_activity_agg$steps)
+
+clean_activity_median
+```
+
+## Calculate the average daily activity pattern
+### Plotting the time series of average steps per day by interval
+```{r}
+clean_activity_mean_by_interval <- aggregate(steps ~ interval, clean_activity, mean)
+plot(clean_activity_mean_by_interval$interval,clean_activity_mean_by_interval$steps, type="l",
+     xlab = "Interval", ylab="Steps", main = "Plot of Steps by Interval over Time")
+```
+
+### Calculate the maximum steps in interval
+```{r}
+interval_max_steps <- subset(clean_activity_mean_by_interval, clean_activity_mean_by_interval$steps == max(clean_activity_mean_by_interval$steps))
+interval_max_steps
+```
+
+## Imput the missing step data.
+
+### This will find all records with missing step data and fill in the step data based on the average for that time interval
+```{r}
+fixed_activity <- transform(activity, steps = 
+            ifelse(
+                is.na(activity$steps), 
+                   clean_activity_mean_by_interval$steps[match(activity$interval,clean_activity_mean_by_interval$interval)], activity$steps))[1:3]
+```
+
+
+### This calculates the steps per day and plots based on the imputted data
+```{r}
+fixed_activity_agg <- aggregate(steps ~ date, fixed_activity, sum)
+hist(fixed_activity_agg$steps, main = "Histogram of Steps by Day with Imputted Data", xlab = "Steps")
+```
+
+### This caulcates the mean steps activity with imput data
+```{r}
+fixed_activity_mean <- mean(fixed_activity_agg$steps)
+fixed_activity_mean
+```
+
+### This caulcates the mediean steps activity with imput data
+```{r}
+fixed_activity_median <-median(fixed_activity_agg$steps)
+fixed_activity_median
+```
+
+## This section will analyze the activity based on steps during weekday versus weekend
+
+### This will flag all days as either weekend or weekday
+```{r}
+weekend = c("Saturday","Sunday")
+fixed_activity$weekday_flag = as.factor(ifelse(is.element(weekdays(as.Date(fixed_activity$date)),weekend), "Weekend", "Weekday"))
+```
+
+### This will calculate and plot steps based on time interval for data comparison of weekend versus weekday
+```{r}
+compare_fixed_activity_by_interval_weekend <- aggregate(steps ~ interval + weekday_flag, fixed_activity, mean)
+
+xyplot(compare_fixed_activity_by_interval_weekend$steps ~ compare_fixed_activity_by_interval_weekend$interval|compare_fixed_activity_by_interval_weekend$weekday_flag , main="Average Steps per Day by Weekend/Weekday & Interval",xlab="Interval", ylab="Steps",layout=c(1,2), type="l")
+
+```
+
